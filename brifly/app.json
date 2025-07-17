@@ -5,7 +5,7 @@
     "scheme": "brifly",
     "version": "1.0.0",
     "orientation": "portrait",
-    "entryPoint": "expo-router/entry",
+    "entryPoint": "./index.js",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
