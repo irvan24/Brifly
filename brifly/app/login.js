@@ -1,31 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert
-} from 'react-native';
-import { useRouter } from 'expo-router';
-//import { supabase } from '../lib/supabase'; // Assure-toi que ce fichier existe
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { supabase } from "../lib/SupabaseClient";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    // const { error } = await supabase.auth.signInWithPassword({
-    //   email,
-    //   password,
-    // });
+    if (!email || !password) {
+      return Alert.alert("Erreur", "Veuillez remplir tous les champs.");
+    }
 
-    if (error) {
-      Alert.alert('Erreur', error.message);
-    } else {
-      Alert.alert('Connexion réussie');
-      router.replace('/'); // Redirige vers la page d'accueil
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        Alert.alert("Erreur", error.message);
+      } else {
+        router.replace("/(tabs)/dashboard");
+      }
+    } catch (err) {
+      Alert.alert("Erreur", "Une erreur inattendue est survenue.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,11 +64,19 @@ export default function LoginScreen() {
         value={password}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Se connecter</Text>
+      <TouchableOpacity
+        style={[styles.button, loading && { opacity: 0.6 }]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <Text style={styles.buttonText}>Se connecter</Text>
+        )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.replace('/register')}>
+      <TouchableOpacity onPress={() => router.replace("/register")}>
         <Text style={styles.link}>Pas encore de compte ? Créer un compte</Text>
       </TouchableOpacity>
     </View>
@@ -66,42 +86,42 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0e0e0e',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#0e0e0e",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 24,
   },
   title: {
     fontSize: 28,
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: "#ffffff",
+    fontWeight: "bold",
     marginBottom: 32,
   },
   input: {
-    width: '100%',
-    backgroundColor: '#1e1e1e',
+    width: "100%",
+    backgroundColor: "#1e1e1e",
     padding: 12,
     borderRadius: 8,
-    color: '#fff',
+    color: "#fff",
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: "#333",
   },
   button: {
-    backgroundColor: '#ffcc82',
+    backgroundColor: "#ffcc82",
     padding: 12,
     borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     marginTop: 8,
   },
   buttonText: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: "#000",
+    fontWeight: "bold",
     fontSize: 16,
   },
   link: {
-    color: '#888',
+    color: "#888",
     marginTop: 16,
   },
 });
