@@ -43,7 +43,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bienvenue sur Brifly 👋</Text>
+      <Text style={styles.title}>Welcome to Brifly 👋</Text>
 
       <TextInput
         style={styles.input}
@@ -57,12 +57,15 @@ export default function LoginScreen() {
 
       <TextInput
         style={styles.input}
-        placeholder="Mot de passe"
+        placeholder="Passwordte"
         placeholderTextColor="#aaa"
         secureTextEntry
         onChangeText={setPassword}
         value={password}
       />
+      <TouchableOpacity onPress={() => router.push("/ForgotPassword")}>
+        <Text style={styles.forgotText}>password forgoten ?</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.button, loading && { opacity: 0.6 }]}
@@ -72,12 +75,12 @@ export default function LoginScreen() {
         {loading ? (
           <ActivityIndicator color="#000" />
         ) : (
-          <Text style={styles.buttonText}>Se connecter</Text>
+          <Text style={styles.buttonText}>Login</Text>
         )}
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.replace("/register")}>
-        <Text style={styles.link}>Pas encore de compte ? Créer un compte</Text>
+        <Text style={styles.link}>Signup</Text>
       </TouchableOpacity>
     </View>
   );
@@ -106,6 +109,30 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#333",
+  },
+  button: {
+    backgroundColor: "#ffcc82",
+    padding: 12,
+    borderRadius: 8,
+    width: "100%",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  buttonText: {
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  link: {
+    color: "#888",
+    marginTop: 16,
+  },
+
+  forgotText: {
+    color: "#facc15",
+    alignSelf: "flex-end",
+    marginBottom: 16,
+    fontSize: 14,
   },
   button: {
     backgroundColor: "#ffcc82",

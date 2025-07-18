@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,28 +9,128 @@ import {
   ImageBackground,
   Platform,
   StatusBar,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { supabase } from "../lib/SupabaseClient"; // ajuste le chemin si besoin
 
 export default function ArticleScreen() {
   const router = useRouter();
-  const { title, author, image } = useLocalSearchParams();
+  const { title, author, image, content, url, category, description} = useLocalSearchParams();
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const fullText = `
-Dans un monde de plus en plus connecté, la capacité d'apprendre rapidement et efficacement est devenue un atout essentiel. Ce guide explore les principes fondamentaux de l'apprentissage en profondeur, des techniques de mémorisation aux stratégies de concentration.
+  const decodedUrl = decodeURIComponent(url); // pour s'assurer qu'il est lisible
 
-L’apprentissage ne se résume pas à absorber des informations ; il s'agit de structurer ses idées, pratiquer régulièrement, et maintenir une curiosité constante. Prenons l’exemple de la méthode Feynman, qui consiste à expliquer un concept de manière simple pour mieux l’assimiler. Cette technique, combinée à des sessions de révision espacées, permet de retenir durablement.
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (data?.user) setUser(data.user);
+    };
+    fetchUser();
+  }, []);
 
-D'autres approches incluent la technique Pomodoro pour améliorer la concentration, ou encore le mind mapping pour organiser visuellement ses connaissances. Mais la clé réside dans l'engagement actif de l'apprenant : poser des questions, faire des liens entre les idées, tester ses connaissances.
+//   useEffect(() => {
+//     const logUserTopicView = async () => {
+//       if (!user || !category) return;
+  
+//       const { error } = await supabase.from("UserTopics").upsert({
+//         user_id: user.id,
+//         topic_name: category,
+//         viewed_at: new Date().toISOString(),
+//       });
+  
+//       if (error) {
+//         console.log("❌ Erreur en enregistrant la vue :", error.message);
+//       } else {
+//         console.log("📚 Vue de la catégorie enregistrée :", category);
+//       }
+//     };
+  
+//     logUserTopicView();
+//   }, [user, category]);
 
-En fin de compte, apprendre est un processus dynamique. Ce n'est pas une course, mais un voyage. Il faut accepter de se tromper, d’oublier parfois, pour mieux réapprendre ensuite. La motivation joue aussi un rôle central : plus le sujet vous passionne, plus votre cerveau sera enclin à le retenir.
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (!user || !decodedUrl) return;
 
-Alors que le monde évolue, le véritable super-pouvoir est de savoir apprendre, désapprendre, et réapprendre. Que ce soit pour acquérir une nouvelle compétence ou approfondir un domaine existant, l'apprentissage intentionnel transforme la manière dont nous vivons, travaillons, et pensons.
-`;
+      const { data, error } = await supabase
+        .from("Favorites")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("url", decodedUrl)
+        .single();
 
-  const handleReadMore = () => {
-    alert("Lire l'article complet !");
+      if (data) setIsFavorited(true);
+    };
+    checkFavorite();
+  }, [user, decodedUrl]);
+
+  const toggleFavorite = async () => {
+    if (!user) return alert("Connecte-toi pour ajouter en favori.");
+    console.log("✅ Utilisateur connecté :", user.email);
+    console.log("URL article :", decodedUrl);
+  
+    if (isFavorited) {
+      const { error } = await supabase
+        .from("Favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("url", decodedUrl);
+  
+      if (error) {
+        console.log("❌ Erreur lors de la suppression :", error.message);
+      } else {
+        console.log("🗑️ Article supprimé des favoris !");
+        setIsFavorited(false);
+      }
+    } else {
+      const { error } = await supabase.from("Favorites").insert([
+        {
+          user_id: user.id,
+          title,
+          author,
+          image,
+          url: decodedUrl,
+          category,
+        },
+      ]);
+  
+      if (error) {
+        console.log("❌ Erreur lors de l’ajout :", error.message);
+      } else {
+        console.log("❤️ Article ajouté en favori !");
+        setIsFavorited(true);
+      }
+    }
+  };
+  
+
+  const handleReadMore = async () => {
+    console.log("🔍 user:", user);
+console.log("🔍 category:", category);
+console.log("🔍 url:", decodedUrl);
+    if (decodedUrl) {
+      // Enregistrement du topic consulté uniquement au clic
+      if (user && category) {
+        const { error } = await supabase.from("UserTopics").insert([{
+            user_id: user.id,
+            topic_name: category,
+            viewed_at: new Date().toISOString(),
+          }]);
+  
+        if (error) {
+          console.log("❌ Erreur en enregistrant la vue (Read More) :", error.message);
+        } else {
+          console.log("📚 Vue enregistrée via bouton 'Read More' :", category);
+        }
+      }
+  
+      Linking.openURL(decodedUrl);
+    } else {
+      alert("Lien indisponible");
+    }
   };
 
   return (
@@ -48,11 +148,18 @@ Alors que le monde évolue, le véritable super-pouvoir est de savoir apprendre,
 
           {/* App Bar */}
           <View style={styles.appBar}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.iconButton}
+            >
               <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => alert("Ajouté aux favoris")} style={styles.iconButton}>
-              <Ionicons name="heart-outline" size={24} color="#fff" />
+            <TouchableOpacity onPress={toggleFavorite} style={styles.iconButton}>
+              <Ionicons
+                name={isFavorited ? "heart" : "heart-outline"}
+                size={24}
+                color={isFavorited ? "#ef4444" : "#fff"}
+              />
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -61,17 +168,17 @@ Alors que le monde évolue, le véritable super-pouvoir est de savoir apprendre,
         <View style={styles.content}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.author}>by {author}</Text>
-
-          <Text style={styles.fullText}>{fullText}</Text>
+          <Text style={styles.fullText}>{content || "Contenu non disponible pour cet article."}</Text>
 
           <TouchableOpacity style={styles.readMoreButton} onPress={handleReadMore}>
-            <Text style={styles.readMoreText}>Lire l'article complet</Text>
+            <Text style={styles.readMoreText}>Read the full article</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {

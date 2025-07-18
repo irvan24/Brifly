@@ -14,6 +14,7 @@ import {
 import { Ionicons, Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/SupabaseClient";
+import Constants from "expo-constants";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -22,6 +23,8 @@ export default function Dashboard() {
   const [featuredCourses, setFeaturedCourses] = useState([]);
   const [ongoingCourses, setOngoingCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [articlesCountByTopic, setArticlesCountByTopic] = useState({});
+  const API_KEY = Constants.expoConfig.extra.NEWS_API_KEY;
 
   // Fetch authenticated user
   const fetchUser = async () => {
@@ -31,26 +34,56 @@ export default function Dashboard() {
 
   // Fetch dynamic data once user is available
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
-    // Categories
-    const { data: cats, error: catsError } = await supabase
-      .from("Categories")
-      .select("name");
-    if (!catsError) setCategories(cats.map((c) => c.name));
 
-    // Featured courses
-    const { data: featured, error: fError } = await supabase
-      .from("Categories")
-      .select("name");
-    if (!catsError) setCategories(cats.map((c) => c.name));
+    const { data: topicsViewed, error: tError } = await supabase
+      .from("UserTopics")
+      .select("topic_name")
+      .eq("user_id", user.id)
+      .order("viewed_at", { ascending: false });
 
-    // Ongoing courses for this user
-    const { data: ongoing, error: oError } = await supabase
-      .from("courses")
-      .select("*")
-      .eq("is_ongoing", true)
-      .eq("user_id", user.id);
-    if (!oError) setOngoingCourses(ongoing);
+    if (!tError && topicsViewed.length > 0) {
+      console.log("🔍 Topics vus :", topicsViewed);
+
+      const uniqueTopics = [
+        ...new Set(topicsViewed.map((t) => t.topic_name)),
+      ].slice(0, 10);
+
+      const articles = [];
+
+      for (const topic of uniqueTopics) {
+        const res = await fetch(
+          `https://newsapi.org/v2/everything?q=${encodeURIComponent(
+            topic
+          )}&language=fr&apiKey=${API_KEY}`
+        );
+        const result = await res.json();
+
+        if (!res.ok) {
+          console.log("❌ Erreur API News:", result);
+          continue;
+        }
+
+        if (result.articles?.length) {
+          articles.push({
+            title: result.articles[0].title,
+            author: result.articles[0].author,
+            url: result.articles[0].url,
+            image: result.articles[0].urlToImage,
+            topic,
+          });
+
+          setArticlesCountByTopic((prev) => ({
+            ...prev,
+            [topic]: result.articles.length,
+          }));
+        }
+      }
+
+      console.log("📄 Articles récupérés :", articles);
+      setOngoingCourses(articles);
+    }
 
     setLoading(false);
   };
@@ -68,6 +101,28 @@ export default function Dashboard() {
     router.push({ pathname: "/article", params: { title: course.title } });
   const handleCategory = () => router.push("/category");
 
+  const handleCategoriesFromDashboard = async (categoryName) => {
+    if (!user) return;
+
+    // Enregistre le clic
+    const { error } = await supabase.from("UserTopics").upsert([
+      {
+        user_id: user.id,
+        topic_name: categoryName,
+        viewed_at: new Date().toISOString(),
+      },
+    ]);
+
+    if (error) {
+      console.error(
+        "Erreur lors de l'enregistrement du topic :",
+        error.message
+      );
+    }
+
+    router.push(`/category/${categoryName}`);
+  };
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -84,8 +139,7 @@ export default function Dashboard() {
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Image
               source={{
-                uri:
-                  user.user_metadata.avatar_url || "https://i.pravatar.cc/100",
+                uri: "https://www.pngkey.com/png/full/114-1149878_setting-user-avatar-in-specific-size-without-breaking.png",
               }}
               style={styles.avatar}
             />
@@ -97,7 +151,7 @@ export default function Dashboard() {
             </View>
           </View>
           <TouchableOpacity onPress={handleFavorites}>
-            <Ionicons name="notifications-outline" size={24} color="white" />
+            <Ionicons name="bookmark" size={24} color="white" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -122,71 +176,80 @@ export default function Dashboard() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {categories.map((name, idx) => (
-                <View
+              {[
+                { name: "Productivité", color: "#3b82f6" },
+                { name: "Technologie", color: "#8b5cf6" },
+                { name: "Santé", color: "#10b981" },
+                { name: "Business", color: "#f59e0b" },
+                { name: "Lifestyle", color: "#ef4444" },
+              ].map((item, idx) => (
+                <TouchableOpacity
                   key={idx}
-                  style={[styles.featureCard, { backgroundColor: "black" }]}
+                  style={[styles.featureCard, { backgroundColor: item.color }]}
+                  onPress={() => handleCategoriesFromDashboard(item.name)}
                 >
                   <TouchableOpacity style={styles.heartIcon}>
                     <Ionicons name="heart-outline" size={18} color="white" />
                   </TouchableOpacity>
-                  <Text style={styles.featureTitle}>{name}</Text>
-                  <Text style={styles.featureSub}>8 lessons</Text>
+                  <Text style={styles.featureTitle}>{item.name}</Text>
+                  <Text style={styles.featureSub}>
+                    {articlesCountByTopic[item.name] || 0} article
+                    {articlesCountByTopic[item.name] > 1 ? "s" : ""}
+                  </Text>
                   <Image
                     source={{ uri: "https://via.placeholder.com/36" }}
                     style={styles.featureImage}
                   />
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
           {/* Ongoing */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Ongoing</Text>
+            <Text style={styles.sectionTitle}>
+              Articles récemment consultés
+            </Text>
             {ongoingCourses.length > 0 ? (
-              ongoingCourses.map((course, idx) => (
+              ongoingCourses.map((article, idx) => (
                 <TouchableOpacity
                   key={idx}
                   style={styles.ongoingCard}
-                  onPress={() => handleArticlePress(course)}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/article",
+                      params: {
+                        title: article.title,
+                        url: article.url,
+                        image: article.image,
+                        author: article.author,
+                        category: article.topic,
+                        content: article.content, // si vide, la page affichera une alerte
+                      },
+                    })
+                  }
                 >
                   <View style={styles.ongoingInfo}>
-                    <View
-                      style={[
-                        styles.courseIconWrapper,
-                        { backgroundColor: course.color },
-                      ]}
-                    >
+                    <View style={styles.courseIconWrapper}>
                       <Image
-                        source={{ uri: course.icon }}
+                        source={{ uri: article.image }}
                         style={styles.courseIcon}
                       />
                     </View>
-                    <View>
-                      <Text style={styles.courseTitle}>{course.title}</Text>
-                      <Text style={styles.courseAuthor}>{course.author}</Text>
-                      <Text style={styles.courseLessons}>
-                        {course.lessons} lessons
+                    <View style={{ flexShrink: 1 }}>
+                      <Text style={styles.courseTitle}>{article.title}</Text>
+                      <Text style={styles.courseAuthor}>
+                        {article.author || article.topic}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progress,
-                        { width: `${course.progress}%` },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.progressText}>
-                    {course.progress}% complete
-                  </Text>
                 </TouchableOpacity>
               ))
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Aucun cours en cours</Text>
+                <Text style={styles.emptyText}>
+                  Aucun article consulté récemment
+                </Text>
               </View>
             )}
           </View>

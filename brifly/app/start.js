@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function StartScreen() {
@@ -12,15 +12,15 @@ export default function StartScreen() {
         resizeMode="contain"
       />
 
-      <Text style={styles.title}>Bienvenue sur Brifly</Text>
-      <Text style={styles.subtitle}>Apprends rapidement ce qui t'intéresse, sans t'y perdre.</Text>
+      <Text style={styles.title}>Welcome to Brifly</Text>
+      <Text style={styles.subtitle}>Learn fast.</Text>
 
       <TouchableOpacity style={styles.primaryButton} onPress={() => router.push('/login')}>
-        <Text style={styles.primaryText}>Se connecter</Text>
+        <Text style={styles.primaryText}>Login</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/register')}>
-        <Text style={styles.secondaryText}>Créer un compte</Text>
+        <Text style={styles.secondaryText}>SignUp</Text>
       </TouchableOpacity>
     </View>
   );

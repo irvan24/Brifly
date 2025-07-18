@@ -14,7 +14,7 @@ export default function TabLayout() {
 
           if (route.name === 'index') iconName = 'home';
           if (route.name === 'dashboard') iconName = 'list';
-          if (route.name === 'favorites') iconName = 'heart';
+          if (route.name === 'discover') iconName = 'earth';
           if (route.name === 'profile') iconName = 'person';
 
           return <Ionicons name={iconName} size={size} color={color} />;

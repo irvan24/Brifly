@@ -14,61 +14,19 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import Constants from "expo-constants";
+import { supabase } from "../../lib/SupabaseClient";
 
 const { width } = Dimensions.get("window");
 
-const API_KEY = "9091f0c576704bcaa10cf2329f94883a"
+//const API_KEY = process.env.API_KEY;
 
 const categories = [
   { label: "Tous", color: "#1C1C1E", icon: "apps" },
-  { label: "Productivité", color: "#3b82f6", icon: "flash" },
   { label: "Technologie", color: "#8b5cf6", icon: "laptop" },
   { label: "Santé", color: "#10b981", icon: "heart" },
   { label: "Business", color: "#f59e0b", icon: "briefcase" },
   { label: "Lifestyle", color: "#ef4444", icon: "cafe" },
-];
-
-const featured = [
-  {
-    id: 1,
-    title: "5 habitudes des gens ultra-productifs",
-    image: "https://source.unsplash.com/random/400x300/?productivity",
-    author: "Marie Dupont",
-    duration: "5 min",
-    category: "Productivité",
-    views: "12.3k",
-    rating: 4.8,
-    isBookmarked: false,
-  },
-  {
-    id: 2,
-    title: "Les bases de l'IA en 5 minutes",
-    image: "https://source.unsplash.com/random/400x300/?ai",
-    author: "Alex Martin",
-    duration: "4 min",
-    category: "Technologie",
-    views: "8.7k",
-    rating: 4.6,
-    isBookmarked: true,
-  },
-  {
-    id: 3,
-    title: "Méditation pour débutants",
-    image: "https://source.unsplash.com/random/400x300/?meditation",
-    author: "Sophie Chen",
-    duration: "7 min",
-    category: "Santé",
-    views: "15.2k",
-    rating: 4.9,
-    isBookmarked: false,
-  },
-];
-
-const quickActions = [
-  { title: "Continuer la lecture", icon: "book", color: "#3b82f6" },
-  { title: "Mes favoris", icon: "heart", color: "#ef4444" },
-  { title: "Tendances", icon: "trending-up", color: "#10b981" },
-  { title: "Historique", icon: "time", color: "#f59e0b" },
 ];
 
 const suggestions = [
@@ -79,7 +37,6 @@ const suggestions = [
   "Gérer son stress au travail",
   "L'art de la négociation",
 ];
-
 
 export default function Discover() {
   const router = useRouter();
@@ -92,17 +49,61 @@ export default function Discover() {
   const [bookmarks, setBookmarks] = useState(new Set([2]));
   const [fadeAnim] = useState(new Animated.Value(1));
   const [articles, setArticles] = useState([]);
+  const [featuredArticles, setFeaturedArticles] = useState([]);
+  const [discoverArticles, setDiscoverArticles] = useState([]);
 
+  const toggleBookmark = async (article) => {
+    const { id, title, image, author, url, category } = article;
 
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
 
-  const toggleBookmark = (id) => {
-    const newBookmarks = new Set(bookmarks);
-    if (newBookmarks.has(id)) {
-      newBookmarks.delete(id);
-    } else {
-      newBookmarks.add(id);
+    if (!user) {
+      alert("Tu dois être connecté pour utiliser les favoris.");
+      return;
     }
-    setBookmarks(newBookmarks);
+
+    const isBookmarked = bookmarks.has(id);
+
+    if (isBookmarked) {
+      // ❌ Supprimer des favoris
+      const { error } = await supabase
+        .from("Favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("url", url); // on utilise l'URL comme identifiant unique
+
+      if (!error) {
+        const newBookmarks = new Set(bookmarks);
+        newBookmarks.delete(id);
+        setBookmarks(newBookmarks);
+      } else {
+        console.error(
+          "Erreur lors de la suppression du favori :",
+          error.message
+        );
+      }
+    } else {
+      // ✅ Ajouter aux favoris
+      const { error } = await supabase.from("Favorites").insert([
+        {
+          user_id: user.id,
+          title,
+          author,
+          image,
+          url,
+          category,
+        },
+      ]);
+
+      if (!error) {
+        const newBookmarks = new Set(bookmarks);
+        newBookmarks.add(id);
+        setBookmarks(newBookmarks);
+      } else {
+        console.error("Erreur lors de l’ajout en favori :", error.message);
+      }
+    }
   };
 
   const refreshSuggestion = () => {
@@ -134,30 +135,47 @@ export default function Discover() {
       <Text style={styles.quickActionText}>{item.title}</Text>
     </TouchableOpacity>
   );
-
+  const API_KEY = Constants.expoConfig.extra.NEWS_API_KEY;
 
   const fetchArticles = async (category = "general") => {
     try {
       const response = await fetch(
-        `https://newsapi.org/v2/top-headlines?country=fr&category=${category}&pageSize=15&apiKey=${API_KEY}`
+        `https://newsapi.org/v2/top-headlines?country=us&category=${category}&pageSize=15&apiKey=${API_KEY}`
       );
       const json = await response.json();
-  
+
       if (json.status === "ok") {
+        console.log(
+          "▶️ Articles bruts (json.articles.length):",
+          json.articles?.length
+        );
+        console.log("▶️ Articles bruts:", json.articles);
+
         const filteredArticles = json.articles
           .filter((item) => item.title && item.urlToImage)
           .map((item, index) => ({
             id: index,
             title: item.title,
-            image: item.urlToImage || "https://source.unsplash.com/random/400x300",
+            image:
+              item.urlToImage || "https://source.unsplash.com/random/400x300",
             author: item.author || "Auteur inconnu",
+            content: item.content,
             category: category,
-            views: Math.floor(Math.random() * 10000) + " vues",
+            url: item.url,
+            views: Math.floor(Math.random() * 10000),
             rating: (Math.random() * 1 + 4).toFixed(1),
             isBookmarked: false,
           }));
-  
+
+        console.log(
+          "✅ Articles filtrés (after .filter+map):",
+          filteredArticles.length
+        );
+        console.log(filteredArticles);
+
         // Séparer les articles entre featured (5 max) et discover (10 max)
+        console.log("Fetching category:", category);
+
         setFeaturedArticles(filteredArticles.slice(0, 5));
         setDiscoverArticles(filteredArticles.slice(5, 15));
       } else {
@@ -176,34 +194,32 @@ export default function Discover() {
   }, []);
 
   useEffect(() => {
-    if (selectedCategory === "Tous") {
-      fetchArticles();
-    } else {
-      const categoryMap = {
-        Productivité: "business",
-        Technologie: "technology",
-        Santé: "health",
-        Business: "business",
-        Lifestyle: "entertainment",
-      };
-  
-      fetchArticles(categoryMap[selectedCategory] || "general");
-    }
+    const categoryMap = {
+      Tous: "general",
+      Technologie: "technology",
+      Santé: "health",
+      Business: "business",
+      Lifestyle: "entertainment",
+    };
+
+    const mappedCategory = categoryMap[selectedCategory] || "general";
+    console.log("→ Chargement des articles pour :", mappedCategory);
+    fetchArticles(mappedCategory);
   }, [selectedCategory]);
-  
-  
-  
 
   const renderFeaturedCard = ({ item }) => (
     <TouchableOpacity
       style={styles.featuredCard}
       onPress={() =>
         router.push({
-          pathname: "/ArticleScreen",
+          pathname: "/article",
           params: {
             title: item.title,
             author: item.author,
             image: item.image,
+            content: item.content,
+            url: item.url,
+            category: item.category
           },
         })
       }
@@ -213,14 +229,11 @@ export default function Discover() {
         <View style={styles.featuredBadge}>
           <Text style={styles.featuredBadgeText}>{item.category}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.bookmarkButton}
-          onPress={() => toggleBookmark(item.id)}
-        >
+        <TouchableOpacity onPress={() => toggleBookmark(item)}>
           <Ionicons
-            name={bookmarks.has(item.id) ? "heart" : "heart-outline"}
-            size={20}
-            color={bookmarks.has(item.id) ? "#ef4444" : "#fff"}
+            name={bookmarks.has(item.id) ? "bookmark" : "bookmark-outline"}
+            size={24}
+            color={bookmarks.has(item.id) ? "#f59e0b" : "#1C1C1E"}
           />
         </TouchableOpacity>
       </View>
@@ -248,19 +261,18 @@ export default function Discover() {
           <View>
             <Text style={styles.title}>Discover</Text>
           </View>
-          
         </View>
 
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#8E8E93" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Rechercher un sujet..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#8E8E93"
-            />
-          </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#8E8E93" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher un sujet..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#8E8E93"
+          />
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -273,48 +285,49 @@ export default function Discover() {
           contentContainerStyle={styles.categoriesContainer}
         >
           {categories.map((cat, index) => (
-           <TouchableOpacity
-           key={index}
-           activeOpacity={0.85}
-           onPress={() => setSelectedCategory(cat.label)}
-           style={[
-             styles.categoryTag,
-             {
-               backgroundColor:
-                 selectedCategory === cat.label
-                   ? cat.color
-                   : cat.color + "15", // plus doux
-               shadowOpacity: selectedCategory === cat.label ? 0.25 : 0.1,
-               transform: [{ scale: selectedCategory === cat.label ? 1.05 : 1 }],
-             },
-           ]}
-         >
-           <Ionicons
-             name={cat.icon}
-             size={16}
-             color={selectedCategory === cat.label ? "#fff" : cat.color}
-             style={{ marginRight: 6 }}
-           />
-           <Text
-             style={[
-               styles.categoryText,
-               {
-                 color: selectedCategory === cat.label ? "#fff" : cat.color,
-               },
-             ]}
-           >
-             {cat.label}
-           </Text>
-         </TouchableOpacity>
-         
+            <TouchableOpacity
+              key={index}
+              activeOpacity={0.85}
+              onPress={() => setSelectedCategory(cat.label)}
+              style={[
+                styles.categoryTag,
+                {
+                  backgroundColor:
+                    selectedCategory === cat.label
+                      ? cat.color
+                      : cat.color + "15", // plus doux
+                  shadowOpacity: selectedCategory === cat.label ? 0.25 : 0.1,
+                  transform: [
+                    { scale: selectedCategory === cat.label ? 1.05 : 1 },
+                  ],
+                },
+              ]}
+            >
+              <Ionicons
+                name={cat.icon}
+                size={16}
+                color={selectedCategory === cat.label ? "#fff" : cat.color}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.categoryText,
+                  {
+                    color: selectedCategory === cat.label ? "#fff" : cat.color,
+                  },
+                ]}
+              >
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
         {/* Featured Content */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔥 À la une</Text>
+          <Text style={styles.sectionTitle}>spotlight</Text>
           <FlatList
-            data={articles}
+            data={featuredArticles}
             renderItem={renderFeaturedCard}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -325,7 +338,7 @@ export default function Discover() {
         </View>
 
         {/* Suggestion aléatoire */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>💡 Inspiration du moment</Text>
           <View style={styles.suggestionCard}>
             <View style={styles.suggestionIconContainer}>
@@ -343,23 +356,26 @@ export default function Discover() {
               <Ionicons name="refresh" size={20} color="#3b82f6" />
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         {/* Trending Topics */}
         {/* Articles suggérés */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📰 Sujets à découvrir</Text>
-          {featured.map((item, index) => (
+          <Text style={styles.sectionTitle}>New topics</Text>
+          {discoverArticles.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.articleItem}
               onPress={() =>
                 router.push({
-                  pathname: "/ArticleScreen",
+                  pathname: "/article",
                   params: {
                     title: item.title,
                     author: item.author,
                     image: item.image,
+                    content: item.content,
+                    url: item.url,
+                    category: item.category
                   },
                 })
               }
@@ -478,7 +494,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     transition: "all 0.2s ease-in-out", // ignoré en natif mais utile pour web
   },
-  
+
   categoryText: {
     fontSize: 14,
     fontWeight: "600",
@@ -626,7 +642,6 @@ const styles = StyleSheet.create({
     color: "#1C1C1E",
     marginLeft: 12,
   },
-
 
   articleItem: {
     flexDirection: "row",

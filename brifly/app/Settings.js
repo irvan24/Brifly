@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   Switch,
   TouchableOpacity,
   ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-
+} from "react-native";
+import { useRouter } from "expo-router";
+import { supabase } from "../lib/SupabaseClient";
 export default function Settings() {
   const router = useRouter();
 
@@ -17,21 +17,33 @@ export default function Settings() {
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
 
   const menuItems = [
-    { icon: '📊', title: 'Mes statistiques', subtitle: 'Voir mes progrès détaillés' },
-    { icon: '💎', title: 'Passer au Premium', subtitle: 'Accès illimité et fonctionnalités avancées' },
-    { icon: '🎯', title: 'Objectifs', subtitle: "Définir mes objectifs d'apprentissage" },
-    { icon: '📱', title: 'Téléchargements', subtitle: 'Articles sauvés hors ligne' },
-    { icon: '🎨', title: 'Thème', subtitle: "Personnaliser l'apparence" },
-    { icon: '🔔', title: 'Notifications', subtitle: 'Gérer les notifications' },
-    { icon: '❓', title: 'Aide & Support', subtitle: 'FAQ et contact' },
-    { icon: '⭐', title: "Noter l'app", subtitle: 'Donnez-nous votre avis' },
+    {
+      icon: "📊",
+      title: "Mes statistiques",
+      subtitle: "Voir mes progrès détaillés",
+    },
+    { icon: "🔔", title: "Notifications", subtitle: "Gérer les notifications" },
+    { icon: "❓", title: "Aide & Support", subtitle: "FAQ et contact" },
+    { icon: "⭐", title: "Noter l'app", subtitle: "Donnez-nous votre avis" },
   ];
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Erreur lors de la déconnexion :", error.message);
+    } else {
+      router.replace("/login"); // redirige vers la page de login (à adapter selon ton app)
+    }
+  };
 
   return (
     <View style={styles.container}>
       {/* App Bar */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <Text style={styles.backText}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Paramètres</Text>
@@ -43,13 +55,15 @@ export default function Settings() {
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingTitle}>Notifications</Text>
-            <Text style={styles.settingSubtitle}>Recevoir des rappels quotidiens</Text>
+            <Text style={styles.settingSubtitle}>
+              Recevoir des rappels quotidiens
+            </Text>
           </View>
           <Switch
             value={notificationsEnabled}
             onValueChange={setNotificationsEnabled}
-            trackColor={{ false: '#d1d5db', true: '#facc15' }}
-            thumbColor={notificationsEnabled ? '#000' : '#ccc'}
+            trackColor={{ false: "#d1d5db", true: "#facc15" }}
+            thumbColor={notificationsEnabled ? "#000" : "#ccc"}
           />
         </View>
 
@@ -61,21 +75,23 @@ export default function Settings() {
           <Switch
             value={darkModeEnabled}
             onValueChange={setDarkModeEnabled}
-            trackColor={{ false: '#d1d5db', true: '#facc15' }}
-            thumbColor={darkModeEnabled ? '#000' : '#ccc'}
+            trackColor={{ false: "#d1d5db", true: "#facc15" }}
+            thumbColor={darkModeEnabled ? "#000" : "#ccc"}
           />
         </View>
 
         <View style={styles.settingItem}>
           <View style={styles.settingLeft}>
             <Text style={styles.settingTitle}>Lecture automatique</Text>
-            <Text style={styles.settingSubtitle}>Passer au prochain article</Text>
+            <Text style={styles.settingSubtitle}>
+              Passer au prochain article
+            </Text>
           </View>
           <Switch
             value={autoPlayEnabled}
             onValueChange={setAutoPlayEnabled}
-            trackColor={{ false: '#d1d5db', true: '#facc15' }}
-            thumbColor={autoPlayEnabled ? '#000' : '#ccc'}
+            trackColor={{ false: "#d1d5db", true: "#facc15" }}
+            thumbColor={autoPlayEnabled ? "#000" : "#ccc"}
           />
         </View>
 
@@ -95,13 +111,13 @@ export default function Settings() {
         </View>
 
         {/* Bouton logout */}
-        <TouchableOpacity style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Se déconnecter</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
 
         {/* Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>Quick Learn v1.0.0</Text>
+          <Text style={styles.versionText}>Brifly v1.0.0</Text>
         </View>
       </ScrollView>
     </View>
@@ -111,44 +127,44 @@ export default function Settings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    backgroundColor: '#FFFFFF',
+    borderBottomColor: "#E5E5E5",
+    backgroundColor: "#FFFFFF",
   },
   backButton: {
     paddingRight: 10,
   },
   backText: {
     fontSize: 28,
-    color: '#1C1C1E',
+    color: "#1C1C1E",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
+    fontWeight: "bold",
+    color: "#1C1C1E",
   },
   content: {
     paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1C1C1E',
+    fontWeight: "bold",
+    color: "#1C1C1E",
     marginBottom: 15,
     marginTop: 30,
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F4F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F4F4F5",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
@@ -158,12 +174,12 @@ const styles = StyleSheet.create({
   },
   settingTitle: {
     fontSize: 16,
-    color: '#1C1C1E',
-    fontWeight: '600',
+    color: "#1C1C1E",
+    fontWeight: "600",
   },
   settingSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 2,
   },
   section: {
@@ -171,9 +187,9 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F4F5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F4F4F5",
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
@@ -187,38 +203,38 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 16,
-    color: '#1C1C1E',
-    fontWeight: '600',
+    color: "#1C1C1E",
+    fontWeight: "600",
   },
   menuSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 2,
   },
   menuArrow: {
     fontSize: 20,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   logoutButton: {
-    backgroundColor: '#facc15',
+    backgroundColor: "#facc15",
     paddingVertical: 15,
     paddingHorizontal: 30,
     borderRadius: 10,
     marginHorizontal: 20,
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoutText: {
-    color: '#000',
-    fontWeight: 'bold',
+    color: "#000",
+    fontWeight: "bold",
     fontSize: 16,
   },
   versionContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingBottom: 30,
   },
   versionText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
 });

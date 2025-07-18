@@ -9,6 +9,7 @@ export default {
     extra: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_KEY: process.env.SUPABASE_KEY,
+      NEWS_API_KEY: process.env.NEWS_API_KEY,
     },
   },
 };

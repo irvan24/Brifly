@@ -34,6 +34,8 @@ export default function Profile() {
     { value: "7", label: "Série actuelle", color: "#ef4444" },
   ];
 
+
+
   if (!user) return null;
 
   return (
@@ -51,7 +53,7 @@ export default function Profile() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Image
-            source={{ uri: "https://i.pravatar.cc/150?u=" + user.id }}
+            source={{ uri: "https://www.pngkey.com/png/full/114-1149878_setting-user-avatar-in-specific-size-without-breaking.png" + user.id }}
             style={styles.avatar}
           />
           <Text style={styles.name}>{user.user_metadata?.username || "Utilisateur"}</Text>

@@ -6,9 +6,30 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../lib/SupabaseClient";
+
+const colors = [
+  "#FDE68A", "#BFDBFE", "#FCA5A5", "#C4B5FD", "#6EE7B7", "#FCD34D",
+  "#F9A8D4", "#93C5FD", "#FECACA", "#A5F3FC"
+];
+
+const emojiMap = {
+  Santé: "🏥",
+  Technologies: "🧠",
+  Economy: "💰",
+  Politics: "📈",
+  Voyage: "✈️",
+  Alimentation: "🍎",
+  Education: "🎓",
+  Divertissement: "🎬",
+  Sciences: "🧪",
+  Recent: "⌛️",
+  Art: "🎨",
+  Design: "🧑‍🎨",
+};
 
 export default function Category() {
   const router = useRouter();
@@ -19,7 +40,7 @@ export default function Category() {
     const fetchCategories = async () => {
       const { data, error } = await supabase
         .from("Categories")
-        .select("name"); // ou icon, selon ce que tu as
+        .select("*");
 
       if (!error) {
         setCategories(data);
@@ -40,6 +61,7 @@ export default function Category() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backText}>‹</Text>
@@ -47,27 +69,31 @@ export default function Category() {
         <Text style={styles.title}>Catégories</Text>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {categories.map((cat, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.card}
-            onPress={() => router.push(`/category/${cat.name.toLowerCase()}`)}
-          >
-            <Text style={styles.emoji}>{cat.emoji || "📚"}</Text>
-            <View style={styles.cardText}>
+      {/* Grid */}
+      <ScrollView contentContainerStyle={styles.grid}>
+        {categories.map((cat, index) => {
+          const emoji = emojiMap[cat.name] || "📚";
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[styles.card, { backgroundColor: colors[index % colors.length] }]}
+              onPress={() => router.push(`/category/${cat.name.toLowerCase()}`)}
+            >
+              <Text style={styles.emoji}>{emoji}</Text>
               <Text style={styles.cardTitle}>{cat.name}</Text>
               <Text style={styles.cardDescription}>
                 {cat.description || "Aucune description"}
               </Text>
-            </View>
-            <Text style={styles.arrow}>›</Text>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
 }
+
+const screenWidth = Dimensions.get("window").width;
+const cardWidth = (screenWidth - 60) / 2; // deux colonnes + margin
 
 const styles = StyleSheet.create({
   container: {
@@ -80,9 +106,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5E5",
-    backgroundColor: "#FFFFFF",
   },
   backButton: {
     paddingRight: 10,
@@ -96,37 +122,37 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1C1C1E",
   },
-  scroll: {
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 10,
+    paddingBottom: 40,
   },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F4F4F5",
+    width: cardWidth,
+    aspectRatio: 1,
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emoji: {
-    fontSize: 26,
-    marginRight: 15,
-  },
-  cardText: {
-    flex: 1,
+    fontSize: 32,
+    marginBottom: 10,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#1C1C1E",
+    textAlign: "center",
   },
   cardDescription: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  arrow: {
-    fontSize: 20,
-    color: "#9CA3AF",
+    fontSize: 13,
+    color: "#4B5563",
+    textAlign: "center",
+    marginTop: 4,
   },
 });

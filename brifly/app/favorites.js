@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,35 +12,45 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-
-const favoriteArticles = [
-  {
-    title: "Understanding Design Systems",
-    author: "Jane Doe",
-    lessons: 5,
-    progress: 80,
-    image: "https://picsum.photos/600/300?random=1",
-  },
-  {
-    title: "The Psychology of Colors",
-    author: "John Smith",
-    lessons: 4,
-    progress: 40,
-    image: "https://picsum.photos/600/300?random=2",
-  },
-];
+import { supabase } from "../lib/SupabaseClient"; // ajuste le chemin si besoin
 
 export default function Favorites() {
   const router = useRouter();
+  const [favorites, setFavorites] = useState([]);
+  const [user, setUser] = useState(null);
 
-  const handleArtcile = (article) => {
+  useEffect(() => {
+    const fetchUserAndFavorites = async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) return;
+
+      setUser(userData.user);
+
+      const { data: favs, error } = await supabase
+        .from("Favorites")
+        .select("*")
+        .eq("user_id", userData.user.id);
+
+      if (!error) {
+        setFavorites(favs);
+      } else {
+        console.error("Erreur chargement favoris :", error.message);
+      }
+    };
+
+    fetchUserAndFavorites();
+  }, []);
+
+  const handleArticle = (article) => {
     router.push({
       pathname: "/article",
       params: {
         title: article.title,
         author: article.author,
-        summary: `Résumé de l'article "${article.title}"...`, // tu peux le rendre plus riche si tu veux
         image: article.image,
+        content: article.content || "", // ou vide si absent
+        url: article.url,
+        category: article.category,
       },
     });
   };
@@ -51,46 +61,39 @@ export default function Favorites() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={28} color="#1C1C1E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Your Favorites</Text>
+        <Text style={styles.headerTitle}>Favorite</Text>
         <View style={{ width: 28 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {favoriteArticles.map((article, index) => (
-          <TouchableOpacity
-            onPress={() => handleArtcile(article)}
-            key={index}
-            style={styles.card}
-          >
-            {" "}
-            <Image
-              source={{ uri: article.image }}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            <View style={styles.infoContainer}>
-              <Text style={styles.articleTitle}>{article.title}</Text>
-              <Text style={styles.author}>By {article.author}</Text>
-              <Text style={styles.lessonText}>{article.lessons} sections</Text>
-
-              <View style={styles.progressContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    { width: `${article.progress}%` },
-                  ]}
-                />
+        {favorites.length === 0 ? (
+          <Text style={{ textAlign: "center", marginTop: 30 }}>
+            Aucun article ajouté en favori.
+          </Text>
+        ) : (
+          favorites.map((article, index) => (
+            <TouchableOpacity
+              onPress={() => handleArticle(article)}
+              key={index}
+              style={styles.card}
+            >
+              <Image
+                source={{ uri: article.image }}
+                style={styles.image}
+                resizeMode="cover"
+              />
+              <View style={styles.infoContainer}>
+                <Text style={styles.articleTitle}>{article.title}</Text>
+                <Text style={styles.author}>By {article.author}</Text>
               </View>
-              <Text style={styles.progressText}>
-                {article.progress}% complete
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {
